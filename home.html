@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="he">
+
+<head>
+    <meta charset="UTF-8">
+    <title>דף הבית</title>
+    <link rel="stylesheet" href="style2.css">
+</head>
+
+<body>
+
+    <header class="top-bar">
+        <a href="https://www.flaticon.com/free-icons/recipe" title="recipe icons" target="_blank">
+            <img src="images/cooking.png" alt="לוגו" class="logo" />
+        </a>
+
+        <input type="text" id="searchInput" placeholder="חפש מתכון..." onkeydown="handleSearchKey(event)"
+            style="padding: 8px; border-radius: 8px; border: 1px solid #ccc; margin-right: 10px;" />
+
+        <button class="add-recipe-btn" onclick="window.location.href='add-recipe.html'">
+            ➕ הוסף מתכון
+        </button>
+    </header>
+
+    <div id="content">
+        <p id="userEmail"></p>
+
+        <!-- כאן יופיעו המתכונים -->
+        <div id="recipeList" style="padding: 30px;"></div>
+    </div>
+
+
+
+    <p id="error"></p>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+        const supabase = createClient(
+            'https://izpbbjhikbbbyahxzhkg.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6cGJiamhpa2JiYnlhaHh6aGtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxOTMxMDUsImV4cCI6MjA2Mzc2OTEwNX0.Gv0WaUlkUAW1qBNEaaXDCWWpwWgbvBTya8KQzFhx08s'
+        );
+
+
+        checkSession();
+
+        function handleSearchKey(e) {
+            if (e.key === "Enter") {
+                const query = e.target.value.toLowerCase();
+                const recipes = document.querySelectorAll(".recipe");
+
+                recipes.forEach((recipe) => {
+                    const title = recipe.querySelector(".recipe-title").textContent.toLowerCase();
+                    recipe.style.display = title.includes(query) ? "block" : "none";
+                });
+            }
+        }
+
+        async function checkSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                alert("החיבור שלך פג תוקף או שאינך מחובר");
+                window.location.href = "index.html";
+                return;
+            }
+
+            document.getElementById("content").style.display = "block";
+            document.getElementById("userEmail").textContent = `התחברת בתור: ${session.user.email}`;
+            console.log("משתמש מחובר:", session.user.email);
+
+            // 🟢 רק עכשיו טען את המתכונים
+            loadRecipes();
+        }
+
+        async function loadRecipes() {
+            const { data, error } = await supabase
+                .from("recipes")
+                .select("*")
+                .eq("is_approved", true)
+                .order("created_at", { ascending: false });
+
+            const list = document.getElementById("recipeList");
+            list.innerHTML = "";
+
+            if (error) {
+                list.innerHTML = "<p>שגיאה בטעינת מתכונים.</p>";
+                return;
+            }
+
+            data.forEach((recipe) => {
+                const div = document.createElement("div");
+                div.classList.add("recipe");
+
+                div.innerHTML = `
+      <h3 class="recipe-title">${recipe.title}</h3>
+      <p>${recipe.description}</p>
+      ${recipe.image1_url ? `<img src="${recipe.image1_url}" class="recipe-img">` : ""}
+      ${recipe.image2_url ? `<img src="${recipe.image2_url}" class="recipe-img">` : ""}
+      ${recipe.image3_url ? `<img src="${recipe.image3_url}" class="recipe-img">` : ""}
+      <hr>
+    `;
+
+                list.appendChild(div);
+            });
+        }
+
+
+    </script>
+
+</body>
+
+</html>
